@@ -1,6 +1,5 @@
 import psycopg2
 import os
-from datetime import datetime
 
 def get_conn():
     return psycopg2.connect(os.getenv("DATABASE_URL"))
@@ -29,7 +28,7 @@ def init_db():
         id SERIAL PRIMARY KEY,
         name TEXT,
         amount REAL,
-        pay_day INTEGER,
+        pay_day INTEGER DEFAULT 1,
         is_active INTEGER DEFAULT 1
     )''')
 
@@ -60,25 +59,21 @@ def init_db():
         created_at TEXT
     )''')
 
-    # Кредиттерді алдын ала қосыў
     c.execute("SELECT COUNT(*) FROM credits")
     if c.fetchone()[0] == 0:
-        credits = [
+        c.executemany("INSERT INTO credits (name, amount, pay_day) VALUES (%s,%s,%s)", [
             ("Солнечный панель", 0, 1),
             ("Талим кредит", 0, 1),
             ("Миллий кредит", 0, 1),
-        ]
-        c.executemany("INSERT INTO credits (name, amount, pay_day) VALUES (%s,%s,%s)", credits)
+        ])
 
-    # Тұрақлы харажатларды алдын ала қосыў
     c.execute("SELECT COUNT(*) FROM fixed_expenses")
     if c.fetchone()[0] == 0:
-        fixed = [
+        c.executemany("INSERT INTO fixed_expenses (name, amount, pay_day) VALUES (%s,%s,%s)", [
             ("Квартира", 0, 1),
             ("Коммунал төлем", 0, 1),
             ("Бала таярлығы", 0, 1),
-        ]
-        c.executemany("INSERT INTO fixed_expenses (name, amount, pay_day) VALUES (%s,%s,%s)", fixed)
+        ])
 
     conn.commit()
     conn.close()
