@@ -1,0 +1,4 @@
+.env
+budget.db
+__pycache__/
+*.pyc
