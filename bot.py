@@ -128,13 +128,14 @@ def save_credit_amount(message, cid):
         bot.send_message(message.chat.id, "❌ Қате! Тек сан жазың.")
 
 def save_credit_day(message, cid, amount):
+def save_credit_day(message, cid, amount):
     try:
         day = int(message.text.strip())
         if not 1 <= day <= 31:
             raise ValueError
         conn = get_conn()
         c = conn.cursor()
-        c.execute("UPDATE credits SET amount=?, pay_day=? WHERE id=?",
+        c.execute("UPDATE credits SET amount=%s, pay_day=%s WHERE id=%s",
                   (amount, day, cid))
         conn.commit()
         conn.close()
