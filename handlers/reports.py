@@ -32,14 +32,12 @@ def register_report_handlers(bot):
             date_filter = last.strftime("%Y-%m")
             title = f"📊 {last.strftime('%B %Y')} есабы"
 
-        c.execute(
-            "SELECT COALESCE(SUM(amount),0) FROM budget WHERE created_at LIKE ?",
-            (f"{date_filter}%",))
+        c.execute("SELECT COALESCE(SUM(amount),0) FROM budget WHERE created_at LIKE %s",
+                  (f"{date_filter}%",))
         total_budget = c.fetchone()[0]
 
-        c.execute(
-            "SELECT source, COALESCE(SUM(amount),0) FROM budget WHERE created_at LIKE ? GROUP BY source",
-            (f"{date_filter}%",))
+        c.execute("SELECT source, COALESCE(SUM(amount),0) FROM budget WHERE created_at LIKE %s GROUP BY source",
+                  (f"{date_filter}%",))
         income_by_source = c.fetchall()
 
         c.execute("SELECT name, amount FROM credits WHERE is_active=1")
@@ -50,9 +48,8 @@ def register_report_handlers(bot):
         fixed = c.fetchall()
         fixed_total = sum(a for _, a in fixed)
 
-        c.execute(
-            "SELECT COALESCE(SUM(amount),0) FROM other_expenses WHERE created_at LIKE ?",
-            (f"{date_filter}%",))
+        c.execute("SELECT COALESCE(SUM(amount),0) FROM other_expenses WHERE created_at LIKE %s",
+                  (f"{date_filter}%",))
         other_total = c.fetchone()[0]
         conn.close()
 
