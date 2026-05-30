@@ -28,8 +28,9 @@ def register_budget_handlers(bot):
             amount = float(message.text.replace(",", "").replace(" ", ""))
             conn = get_conn()
             c = conn.cursor()
-            c.execute("INSERT INTO budget (telegram_id, source, amount, created_at) VALUES (%s,%s,%s,%s)",
-                      (telegram_id, source, amount, str(datetime.now())))
+            c.execute(
+                "INSERT INTO budget (telegram_id, source, amount, created_at) VALUES (%s,%s,%s,%s)",
+                (telegram_id, source, amount, str(datetime.now())))
             conn.commit()
             conn.close()
             bot.send_message(message.chat.id, f"✅ {source}: +{amount:,.0f} сум қосылды!")
