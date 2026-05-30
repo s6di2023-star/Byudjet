@@ -1,5 +1,7 @@
 import telebot
 import os
+import threading
+from flask import Flask
 from dotenv import load_dotenv
 from datetime import datetime
 from database import init_db, get_conn
@@ -13,8 +15,13 @@ BOT_TOKEN = os.getenv("BOT_TOKEN")
 ADMIN_ID = int(os.getenv("ADMIN_ID"))
 
 bot = telebot.TeleBot(BOT_TOKEN)
+app = Flask(__name__)
 
 init_db()
+
+@app.route('/')
+def home():
+    return "Бот жұмыс істеп тур! ✅"
 
 def main_menu():
     markup = telebot.types.ReplyKeyboardMarkup(resize_keyboard=True)
@@ -118,8 +125,11 @@ def save_credit_amount(message, cid):
 register_budget_handlers(bot)
 register_expense_handlers(bot)
 register_report_handlers(bot)
-
 start_scheduler(bot, ADMIN_ID)
 
-if __name__ == "__main__":
+def run_bot():
     bot.polling(none_stop=True)
+
+if __name__ == "__main__":
+    threading.Thread(target=run_bot).start()
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
