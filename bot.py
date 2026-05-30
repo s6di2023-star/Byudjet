@@ -128,7 +128,6 @@ def save_credit_amount(message, cid):
         bot.send_message(message.chat.id, "❌ Қате! Тек сан жазың.")
 
 def save_credit_day(message, cid, amount):
-def save_credit_day(message, cid, amount):
     try:
         day = int(message.text.strip())
         if not 1 <= day <= 31:
