@@ -52,27 +52,34 @@ def dashboard(message):
     c = conn.cursor()
     c.execute("SELECT COALESCE(SUM(amount),0) FROM budget")
     total_budget = c.fetchone()[0]
-    c.execute("SELECT name, amount FROM credits WHERE is_active=1")
+    c.execute("SELECT name, amount, pay_day FROM credits WHERE is_active=1")
     credits = c.fetchall()
-    c.execute("SELECT name, amount FROM fixed_expenses WHERE is_active=1")
+    c.execute("SELECT name, amount, pay_day FROM fixed_expenses WHERE is_active=1")
     fixed = c.fetchall()
     month = datetime.now().strftime("%Y-%m")
-    c.execute("SELECT COALESCE(SUM(amount),0) FROM other_expenses WHERE created_at LIKE ?",
+    c.execute("SELECT COALESCE(SUM(amount),0) FROM other_expenses WHERE created_at LIKE %s",
               (f"{month}%",))
     other = c.fetchone()[0]
     conn.close()
 
-    credit_total = sum(a for _, a in credits)
-    fixed_total = sum(a for _, a in fixed)
+    credit_total = sum(a for _, a, _ in credits)
+    fixed_total = sum(a for _, a, _ in fixed)
     remaining = total_budget - credit_total - fixed_total - other
+
+    months_kk = {
+        1: "январь", 2: "февраль", 3: "март", 4: "апрель",
+        5: "май", 6: "июнь", 7: "июль", 8: "август",
+        9: "сентябрь", 10: "октябрь", 11: "ноябрь", 12: "декабрь"
+    }
+    cur_month = months_kk[datetime.now().month]
 
     text = f"💼 Бюджет: {total_budget:,.0f} сум\n\n"
     text += "🔴 Кредитлер:\n"
-    for name, amount in credits:
-        text += f"  • {name}: -{amount:,.0f} сум\n"
+    for name, amount, pay_day in credits:
+        text += f"  • {name}: -{amount:,.0f} сум ({pay_day}-{cur_month})\n"
     text += "\n🟡 Тұрақлы харажатлар:\n"
-    for name, amount in fixed:
-        text += f"  • {name}: -{amount:,.0f} сум\n"
+    for name, amount, pay_day in fixed:
+        text += f"  • {name}: -{amount:,.0f} сум ({pay_day}-{cur_month})\n"
     text += f"\n🟢 Басқа харажатлар: -{other:,.0f} сум\n"
     text += f"\n──────────────────\n"
     text += f"💰 Қалған бюджет: {remaining:,.0f} сум"
