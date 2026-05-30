@@ -51,37 +51,34 @@ def dashboard(message):
     conn = get_conn()
     c = conn.cursor()
 
-    # Жалпы қолда бар бюджет
     c.execute("SELECT COALESCE(SUM(amount),0) FROM budget")
     total_budget = c.fetchone()[0]
 
-    # Кредитлер
     c.execute("SELECT name, amount, pay_day FROM credits WHERE is_active=1")
     credits = c.fetchall()
 
-    # Тұрақлы харажатлар
     c.execute("SELECT name, amount, pay_day FROM fixed_expenses WHERE is_active=1")
     fixed = c.fetchall()
 
-    # Басқа харажатлар (бул ай төленген)
     month = datetime.now().strftime("%Y-%m")
+
     c.execute("SELECT COALESCE(SUM(amount),0) FROM other_expenses WHERE created_at LIKE %s",
               (f"{month}%",))
     other = c.fetchone()[0]
 
-    # Төленген кредитлер (бул ай)
+    c.execute("SELECT category, COALESCE(SUM(amount),0) FROM other_expenses WHERE created_at LIKE %s GROUP BY category",
+              (f"{month}%",))
+    other_by_cat = c.fetchall()
+
     c.execute("SELECT COALESCE(SUM(amount),0) FROM payments WHERE month=%s AND status='paid'",
               (month,))
     paid_total = c.fetchone()[0]
 
     conn.close()
 
-    # Жоспарланған харажат
     credit_total = sum(a for _, a, _ in credits)
     fixed_total = sum(a for _, a, _ in fixed)
     planned_total = credit_total + fixed_total
-
-    # Қолда бар — тек төленген харажатлар шегеріледі
     remaining = total_budget - paid_total - other
 
     months_kk = {
@@ -108,8 +105,10 @@ def dashboard(message):
     for name, amount, pay_day in fixed:
         text += f"  • {name}: {amount:,.0f} сум ({pay_day}-{get_payment_month(pay_day)})\n"
 
-    if other > 0:
-        text += f"\n🟢 Басқа харажатлар: {other:,.0f} сум\n"
+    if other_by_cat:
+        text += "\n🟢 Басқа харажатлар:\n"
+        for cat, amt in other_by_cat:
+            text += f"  • {cat}: {amt:,.0f} сум\n"
 
     text += f"\n📊 Жоспарланған: -{planned_total:,.0f} сум\n"
     text += f"✅ Төленген: -{paid_total:,.0f} сум\n"
