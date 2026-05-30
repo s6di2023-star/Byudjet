@@ -58,10 +58,8 @@ def register_expense_handlers(bot):
             "oth_baska": "Басқа"
         }
         category = categories.get(call.data, "Басқа")
-        msg = bot.send_message(call.message.chat.id,
-                               f"💸 {category} суммасын жаз (сум):")
-        bot.register_next_step_handler(msg, save_other_expense,
-                                       category, call.from_user.id)
+        msg = bot.send_message(call.message.chat.id, f"💸 {category} суммасын жаз (сум):")
+        bot.register_next_step_handler(msg, save_other_expense, category, call.from_user.id)
 
     def save_other_expense(message, category, telegram_id):
         try:
@@ -69,22 +67,20 @@ def register_expense_handlers(bot):
             conn = get_conn()
             c = conn.cursor()
             c.execute(
-                "INSERT INTO other_expenses (telegram_id, category, amount, created_at) VALUES (?,?,?,?)",
+                "INSERT INTO other_expenses (telegram_id, category, amount, created_at) VALUES (%s,%s,%s,%s)",
                 (telegram_id, category, amount, str(datetime.now())))
             conn.commit()
             conn.close()
-            bot.send_message(message.chat.id,
-                             f"✅ {category}: -{amount:,.0f} сум қосылды!")
+            bot.send_message(message.chat.id, f"✅ {category}: -{amount:,.0f} сум қосылды!")
         except ValueError:
-            bot.send_message(message.chat.id,
-                             "❌ Қате! Тек сан жазың. Мысалы: 150000")
+            bot.send_message(message.chat.id, "❌ Қате! Тек сан жазың. Мысалы: 150000")
 
     @bot.callback_query_handler(func=lambda call: call.data.startswith("pc_"))
     def pay_credit(call):
         cid = int(call.data.split("_")[1])
         conn = get_conn()
         c = conn.cursor()
-        c.execute("SELECT name, amount FROM credits WHERE id=?", (cid,))
+        c.execute("SELECT name, amount FROM credits WHERE id=%s", (cid,))
         credit = c.fetchone()
         c.execute("SELECT COALESCE(SUM(amount),0) FROM budget")
         total_budget = c.fetchone()[0]
@@ -93,24 +89,24 @@ def register_expense_handlers(bot):
         c.execute("SELECT COALESCE(SUM(amount),0) FROM fixed_expenses WHERE is_active=1")
         fixed_total = c.fetchone()[0]
         month = datetime.now().strftime("%Y-%m")
-        c.execute(
-            "SELECT COALESCE(SUM(amount),0) FROM other_expenses WHERE created_at LIKE ?",
-            (f"{month}%",))
+        c.execute("SELECT COALESCE(SUM(amount),0) FROM other_expenses WHERE created_at LIKE %s",
+                  (f"{month}%",))
         other = c.fetchone()[0]
         conn.close()
+
         name, amount = credit
         remaining = total_budget - credit_total - fixed_total - other
+
         if remaining >= amount:
             conn = get_conn()
             c = conn.cursor()
             c.execute(
-                "INSERT INTO payments (type, ref_id, amount, status, month, created_at) VALUES (?,?,?,?,?,?)",
+                "INSERT INTO payments (type, ref_id, amount, status, month, created_at) VALUES (%s,%s,%s,%s,%s,%s)",
                 ("credit", cid, amount, "paid", month, str(datetime.now())))
             conn.commit()
             conn.close()
             bot.answer_callback_query(call.id, f"✅ {name} төленди!")
-            bot.send_message(call.message.chat.id,
-                             f"✅ {name}: -{amount:,.0f} сум төленди!")
+            bot.send_message(call.message.chat.id, f"✅ {name}: -{amount:,.0f} сум төленди!")
         else:
             bot.answer_callback_query(call.id, "❌ Бюджет жетиспейди!")
             bot.send_message(call.message.chat.id,
@@ -125,7 +121,7 @@ def register_expense_handlers(bot):
         fid = int(call.data.split("_")[1])
         conn = get_conn()
         c = conn.cursor()
-        c.execute("SELECT name, amount FROM fixed_expenses WHERE id=?", (fid,))
+        c.execute("SELECT name, amount FROM fixed_expenses WHERE id=%s", (fid,))
         fixed = c.fetchone()
         c.execute("SELECT COALESCE(SUM(amount),0) FROM budget")
         total_budget = c.fetchone()[0]
@@ -134,24 +130,24 @@ def register_expense_handlers(bot):
         c.execute("SELECT COALESCE(SUM(amount),0) FROM fixed_expenses WHERE is_active=1")
         fixed_total = c.fetchone()[0]
         month = datetime.now().strftime("%Y-%m")
-        c.execute(
-            "SELECT COALESCE(SUM(amount),0) FROM other_expenses WHERE created_at LIKE ?",
-            (f"{month}%",))
+        c.execute("SELECT COALESCE(SUM(amount),0) FROM other_expenses WHERE created_at LIKE %s",
+                  (f"{month}%",))
         other = c.fetchone()[0]
         conn.close()
+
         name, amount = fixed
         remaining = total_budget - credit_total - fixed_total - other
+
         if remaining >= amount:
             conn = get_conn()
             c = conn.cursor()
             c.execute(
-                "INSERT INTO payments (type, ref_id, amount, status, month, created_at) VALUES (?,?,?,?,?,?)",
+                "INSERT INTO payments (type, ref_id, amount, status, month, created_at) VALUES (%s,%s,%s,%s,%s,%s)",
                 ("fixed", fid, amount, "paid", month, str(datetime.now())))
             conn.commit()
             conn.close()
             bot.answer_callback_query(call.id, f"✅ {name} төленди!")
-            bot.send_message(call.message.chat.id,
-                             f"✅ {name}: -{amount:,.0f} сум төленді!")
+            bot.send_message(call.message.chat.id, f"✅ {name}: -{amount:,.0f} сум төленди!")
         else:
             bot.answer_callback_query(call.id, "❌ Бюджет жетиспейди!")
             bot.send_message(call.message.chat.id,
