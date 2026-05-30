@@ -50,28 +50,45 @@ def start(message):
 def dashboard(message):
     conn = get_conn()
     c = conn.cursor()
+
+    # Жалпы қолда бар бюджет
     c.execute("SELECT COALESCE(SUM(amount),0) FROM budget")
     total_budget = c.fetchone()[0]
+
+    # Кредитлер
     c.execute("SELECT name, amount, pay_day FROM credits WHERE is_active=1")
     credits = c.fetchall()
+
+    # Тұрақлы харажатлар
     c.execute("SELECT name, amount, pay_day FROM fixed_expenses WHERE is_active=1")
     fixed = c.fetchall()
+
+    # Басқа харажатлар (бул ай төленген)
     month = datetime.now().strftime("%Y-%m")
     c.execute("SELECT COALESCE(SUM(amount),0) FROM other_expenses WHERE created_at LIKE %s",
               (f"{month}%",))
     other = c.fetchone()[0]
+
+    # Төленген кредитлер (бул ай)
+    c.execute("SELECT COALESCE(SUM(amount),0) FROM payments WHERE month=%s AND status='paid'",
+              (month,))
+    paid_total = c.fetchone()[0]
+
     conn.close()
 
+    # Жоспарланған харажат
     credit_total = sum(a for _, a, _ in credits)
     fixed_total = sum(a for _, a, _ in fixed)
-    remaining = total_budget - credit_total - fixed_total - other
+    planned_total = credit_total + fixed_total
+
+    # Қолда бар — тек төленген харажатлар шегеріледі
+    remaining = total_budget - paid_total - other
 
     months_kk = {
         1: "январь", 2: "февраль", 3: "март", 4: "апрель",
         5: "май", 6: "июнь", 7: "июль", 8: "август",
         9: "сентябрь", 10: "октябрь", 11: "ноябрь", 12: "декабрь"
     }
-
     today = datetime.now()
 
     def get_payment_month(pay_day):
@@ -81,16 +98,29 @@ def dashboard(message):
             next_month = today.month + 1 if today.month < 12 else 1
             return months_kk[next_month]
 
-    text = f"💼 Бюджет: {total_budget:,.0f} сум\n\n"
+    text = f"💼 Қолда бар бюджет: {total_budget:,.0f} сум\n\n"
+
     text += "🔴 Кредитлер:\n"
     for name, amount, pay_day in credits:
-        text += f"  • {name}: -{amount:,.0f} сум ({pay_day}-{get_payment_month(pay_day)})\n"
+        text += f"  • {name}: {amount:,.0f} сум ({pay_day}-{get_payment_month(pay_day)})\n"
+
     text += "\n🟡 Тұрақлы харажатлар:\n"
     for name, amount, pay_day in fixed:
-        text += f"  • {name}: -{amount:,.0f} сум ({pay_day}-{get_payment_month(pay_day)})\n"
-    text += f"\n🟢 Басқа харажатлар: -{other:,.0f} сум\n"
+        text += f"  • {name}: {amount:,.0f} сум ({pay_day}-{get_payment_month(pay_day)})\n"
+
+    if other > 0:
+        text += f"\n🟢 Басқа харажатлар: {other:,.0f} сум\n"
+
+    text += f"\n📊 Жоспарланған: -{planned_total:,.0f} сум\n"
+    text += f"✅ Төленген: -{paid_total:,.0f} сум\n"
     text += f"\n──────────────────\n"
-    text += f"💰 Қалған бюджет: {remaining:,.0f} сум"
+    text += f"💰 Қолда бар: {remaining:,.0f} сум\n"
+
+    after_planned = total_budget - planned_total - other
+    if after_planned >= 0:
+        text += f"📉 Барлығы төленсе қалады: {after_planned:,.0f} сум"
+    else:
+        text += f"⚠️ Барлығы төленсе жетіспейді: {after_planned:,.0f} сум"
 
     bot.send_message(message.chat.id, text, reply_markup=main_menu())
 
@@ -147,7 +177,7 @@ def save_credit_day(message, cid, amount):
         bot.send_message(message.chat.id,
                          f"✅ Жаңартылды!\n"
                          f"• Сомма: {amount:,.0f} сум\n"
-                         f"• Төлем күни: {day}-күн")
+                         f"• Төлем күні: {day}-күн")
     except ValueError:
         bot.send_message(message.chat.id, "❌ Қате! 1-31 арасында жазың.")
 
@@ -194,7 +224,7 @@ def save_fixed_day(message, fid, amount):
         bot.send_message(message.chat.id,
                          f"✅ Жаңартылды!\n"
                          f"• Сомма: {amount:,.0f} сум\n"
-                         f"• Төлем күни: {day}-күн")
+                         f"• Төлем күні: {day}-күн")
     except ValueError:
         bot.send_message(message.chat.id, "❌ Қате! 1-31 арасында жазың.")
 
