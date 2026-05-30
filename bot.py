@@ -107,20 +107,85 @@ def set_credit_menu(call):
 @bot.callback_query_handler(func=lambda call: call.data.startswith("ec_"))
 def edit_credit(call):
     cid = int(call.data.split("_")[1])
-    msg = bot.send_message(call.message.chat.id, "Жаңа сомма жаз (сум):\nМысалы: 450000")
+    msg = bot.send_message(call.message.chat.id,
+                           "Жаңа сомма жаз (сум):\nМысалы: 450000")
     bot.register_next_step_handler(msg, save_credit_amount, cid)
 
 def save_credit_amount(message, cid):
     try:
         amount = float(message.text.replace(",", "").replace(" ", ""))
-        conn = get_conn()
-        c = conn.cursor()
-        c.execute("UPDATE credits SET amount=? WHERE id=?", (amount, cid))
-        conn.commit()
-        conn.close()
-        bot.send_message(message.chat.id, f"✅ Кредит суммасы жаңартылды: {amount:,.0f} сум")
+        msg = bot.send_message(message.chat.id,
+                               "Төлем күнин жаз (1-31):\nМысалы: 15")
+        bot.register_next_step_handler(msg, save_credit_day, cid, amount)
     except ValueError:
         bot.send_message(message.chat.id, "❌ Қате! Тек сан жазың.")
+
+def save_credit_day(message, cid, amount):
+    try:
+        day = int(message.text.strip())
+        if not 1 <= day <= 31:
+            raise ValueError
+        conn = get_conn()
+        c = conn.cursor()
+        c.execute("UPDATE credits SET amount=?, pay_day=? WHERE id=?",
+                  (amount, day, cid))
+        conn.commit()
+        conn.close()
+        bot.send_message(message.chat.id,
+                         f"✅ Жаңартылды!\n"
+                         f"• Сомма: {amount:,.0f} сум\n"
+                         f"• Төлем күни: {day}-күн")
+    except ValueError:
+        bot.send_message(message.chat.id, "❌ Қате! 1-31 арасында жазың.")
+
+@bot.callback_query_handler(func=lambda call: call.data == "set_fixed")
+def set_fixed_menu(call):
+    conn = get_conn()
+    c = conn.cursor()
+    c.execute("SELECT id, name, amount FROM fixed_expenses WHERE is_active=1")
+    fixed = c.fetchall()
+    conn.close()
+    markup = telebot.types.InlineKeyboardMarkup()
+    for fid, name, amount in fixed:
+        markup.add(telebot.types.InlineKeyboardButton(
+            f"{name}: {amount:,.0f} сум",
+            callback_data=f"ef_{fid}"
+        ))
+    bot.send_message(call.message.chat.id, "Қайси харажатты өзгертесиз?",
+                     reply_markup=markup)
+
+@bot.callback_query_handler(func=lambda call: call.data.startswith("ef_"))
+def edit_fixed(call):
+    fid = int(call.data.split("_")[1])
+    msg = bot.send_message(call.message.chat.id,
+                           "Жаңа сомма жаз (сум):\nМысалы: 600000")
+    bot.register_next_step_handler(msg, save_fixed_amount, fid)
+
+def save_fixed_amount(message, fid):
+    try:
+        amount = float(message.text.replace(",", "").replace(" ", ""))
+        msg = bot.send_message(message.chat.id,
+                               "Төлем күнин жаз (1-31):\nМысалы: 5")
+        bot.register_next_step_handler(msg, save_fixed_day, fid, amount)
+    except ValueError:
+        bot.send_message(message.chat.id, "❌ Қате! Тек сан жазың.")
+
+def save_fixed_day(message, fid, amount):
+    try:
+        day = int(message.text.strip())
+        if not 1 <= day <= 31:
+            raise ValueError
+        conn = get_conn()
+        c = conn.cursor()
+        c.execute("UPDATE fixed_expenses SET amount=? WHERE id=?", (amount, fid))
+        conn.commit()
+        conn.close()
+        bot.send_message(message.chat.id,
+                         f"✅ Жаңартылды!\n"
+                         f"• Сомма: {amount:,.0f} сум\n"
+                         f"• Төлем күни: {day}-күн")
+    except ValueError:
+        bot.send_message(message.chat.id, "❌ Қате! 1-31 арасында жазың.")
 
 register_budget_handlers(bot)
 register_expense_handlers(bot)
