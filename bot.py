@@ -34,11 +34,11 @@ def main_menu():
 def start(message):
     conn = get_conn()
     c = conn.cursor()
-    c.execute("SELECT * FROM users WHERE telegram_id=?", (message.from_user.id,))
+    c.execute("SELECT * FROM users WHERE telegram_id=%s", (message.from_user.id,))
     user = c.fetchone()
     if not user:
         is_admin = 1 if message.from_user.id == ADMIN_ID else 0
-        c.execute("INSERT INTO users (telegram_id, name, is_admin, created_at) VALUES (?,?,?,?)",
+        c.execute("INSERT INTO users (telegram_id, name, is_admin, created_at) VALUES (%s,%s,%s,%s)",
                   (message.from_user.id, message.from_user.first_name, is_admin, str(datetime.now())))
         conn.commit()
     conn.close()
