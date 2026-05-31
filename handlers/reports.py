@@ -98,6 +98,6 @@ def register_report_handlers(bot):
         if after_planned >= 0:
             text += f"📉 Барлығы төленсе қалады: {after_planned:,.0f} сум"
         else:
-            text += f"⚠️ Барлығы төленсе жетиспейди: {after_planned:,.0f} сум"
+            text += f"⚠️ Барлығын төлеуге жетиспейди: {after_planned:,.0f} сум"
 
         bot.send_message(call.message.chat.id, text)
