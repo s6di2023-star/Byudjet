@@ -21,7 +21,7 @@ init_db()
 
 @app.route('/')
 def home():
-    return "Бот жұмыс істеп тур! ✅"
+    return "Бот жумыс ислеп тур! ✅"
 
 def main_menu():
     markup = telebot.types.ReplyKeyboardMarkup(resize_keyboard=True)
@@ -110,7 +110,7 @@ def dashboard(message):
         for cat, amt in other_by_cat:
             text += f"  • {cat}: {amt:,.0f} сум\n"
 
-    text += f"\n📊 Жоспарланған: -{planned_total:,.0f} сум\n"
+    text += f"\n📊 Ойласылған: -{planned_total:,.0f} сум\n"
     text += f"✅ Төленген: -{paid_total:,.0f} сум\n"
     text += f"\n──────────────────\n"
     text += f"💰 Қолда бар: {remaining:,.0f} сум\n"
@@ -119,7 +119,7 @@ def dashboard(message):
     if after_planned >= 0:
         text += f"📉 Барлығы төленсе қалады: {after_planned:,.0f} сум"
     else:
-        text += f"⚠️ Барлығы төленсе жетіспейді: {after_planned:,.0f} сум"
+        text += f"⚠️ Барлығы төленсе жетиспейди: {after_planned:,.0f} сум"
 
     bot.send_message(message.chat.id, text, reply_markup=main_menu())
 
@@ -151,7 +151,7 @@ def set_credit_menu(call):
 @bot.callback_query_handler(func=lambda call: call.data.startswith("ec_"))
 def edit_credit(call):
     cid = int(call.data.split("_")[1])
-    msg = bot.send_message(call.message.chat.id, "Жаңа сомма жаз (сум):\nМысалы: 450000")
+    msg = bot.send_message(call.message.chat.id, "Жаңа сумма жаз (сум):\nМысалы: 450000")
     bot.register_next_step_handler(msg, save_credit_amount, cid)
 
 def save_credit_amount(message, cid):
@@ -175,8 +175,8 @@ def save_credit_day(message, cid, amount):
         conn.close()
         bot.send_message(message.chat.id,
                          f"✅ Жаңартылды!\n"
-                         f"• Сомма: {amount:,.0f} сум\n"
-                         f"• Төлем күні: {day}-күн")
+                         f"• Сумма: {amount:,.0f} сум\n"
+                         f"• Төлем күни: {day}-күн")
     except ValueError:
         bot.send_message(message.chat.id, "❌ Қате! 1-31 арасында жазың.")
 
@@ -198,7 +198,7 @@ def set_fixed_menu(call):
 @bot.callback_query_handler(func=lambda call: call.data.startswith("ef_"))
 def edit_fixed(call):
     fid = int(call.data.split("_")[1])
-    msg = bot.send_message(call.message.chat.id, "Жаңа сомма жаз (сум):\nМысалы: 600000")
+    msg = bot.send_message(call.message.chat.id, "Таза сумма жаз (сум):\nМысалы: 600000")
     bot.register_next_step_handler(msg, save_fixed_amount, fid)
 
 def save_fixed_amount(message, fid):
@@ -222,8 +222,8 @@ def save_fixed_day(message, fid, amount):
         conn.close()
         bot.send_message(message.chat.id,
                          f"✅ Жаңартылды!\n"
-                         f"• Сомма: {amount:,.0f} сум\n"
-                         f"• Төлем күні: {day}-күн")
+                         f"• Сумма: {amount:,.0f} сум\n"
+                         f"• Төлем күни: {day}-күн")
     except ValueError:
         bot.send_message(message.chat.id, "❌ Қате! 1-31 арасында жазың.")
 
