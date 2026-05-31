@@ -7,17 +7,17 @@ def register_budget_handlers(bot):
     @bot.message_handler(func=lambda m: m.text == "➕ Бюджет қосыў")
     def budget_source(message):
         markup = telebot.types.InlineKeyboardMarkup()
-        markup.add(telebot.types.InlineKeyboardButton("💵 Айлық", callback_data="budget_aylik"))
-        markup.add(telebot.types.InlineKeyboardButton("🤝 Жәрдем пул", callback_data="budget_jardem"))
-        markup.add(telebot.types.InlineKeyboardButton("📥 Басқа", callback_data="budget_baska"))
+        markup.add(telebot.types.InlineKeyboardButton("💵 Айлық", callback_data="bdg_aylik"))
+        markup.add(telebot.types.InlineKeyboardButton("🤝 Жәрдем пул", callback_data="bdg_jardem"))
+        markup.add(telebot.types.InlineKeyboardButton("📥 Басқа", callback_data="bdg_baska"))
         bot.send_message(message.chat.id, "Бюджет дерегин таңла:", reply_markup=markup)
 
-    @bot.callback_query_handler(func=lambda call: call.data.startswith("budget_"))
+    @bot.callback_query_handler(func=lambda call: call.data.startswith("bdg_"))
     def budget_amount(call):
         sources = {
-            "budget_aylik": "Айлық",
-            "budget_jardem": "Жәрдем пул",
-            "budget_baska": "Басқа"
+            "bdg_aylik": "Айлық",
+            "bdg_jardem": "Жәрдем пул",
+            "bdg_baska": "Басқа"
         }
         source = sources.get(call.data, "Басқа")
         msg = bot.send_message(call.message.chat.id, f"💵 {source} суммасын жаз (сум):")
