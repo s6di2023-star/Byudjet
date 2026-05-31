@@ -39,7 +39,7 @@ def check_credit_reminders(bot, admin_id):
         text = "🔔 2 күннен кейин төлем!\n\n"
         for name, amount, pay_day in reminders:
             text += f"• {name}: {amount:,.0f} сум\n"
-            text += f"  Төлем күні: {pay_day}-{cur_month}\n\n"
+            text += f"  Төлем күни: {pay_day}-{cur_month}\n\n"
 
         for (telegram_id,) in users:
             try:
