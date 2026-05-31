@@ -1,5 +1,6 @@
 from database import get_conn
 from datetime import datetime
+import calendar
 import telebot
 
 def register_report_handlers(bot):
@@ -25,10 +26,10 @@ def register_report_handlers(bot):
             date_filter = now.strftime("%Y-%m")
             title = f"📊 {now.strftime('%B %Y')} есабы"
         else:
-            if now.month == 1:
-                last = now.replace(year=now.year - 1, month=12)
-            else:
-                last = now.replace(month=now.month - 1)
+            last_month = now.month - 1 if now.month > 1 else 12
+            last_year = now.year if now.month > 1 else now.year - 1
+            last_day = min(now.day, calendar.monthrange(last_year, last_month)[1])
+            last = now.replace(year=last_year, month=last_month, day=last_day)
             date_filter = last.strftime("%Y-%m")
             title = f"📊 {last.strftime('%B %Y')} есабы"
 
@@ -89,7 +90,7 @@ def register_report_handlers(bot):
                 text += f"  • {cat}: -{amt:,.0f} сум\n"
             text += f"  Улыума: -{other_total:,.0f} сум\n"
 
-        text += f"\n📊 Ойласылған: -{planned_total:,.0f} сум\n"
+        text += f"\n📊 Улыумаласған: -{planned_total:,.0f} сум\n"
         text += f"✅ Төленген: -{paid_total:,.0f} сум\n"
         text += f"\n──────────────────\n"
         text += f"💰 Қолда бар: {remaining:,.0f} сум\n"
