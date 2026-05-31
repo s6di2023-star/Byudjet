@@ -110,7 +110,7 @@ def dashboard(message):
         for cat, amt in other_by_cat:
             text += f"  • {cat}: {amt:,.0f} сум\n"
 
-    text += f"\n📊 Ойласылған: -{planned_total:,.0f} сум\n"
+    text += f"\n📊 Улыумаласған: -{planned_total:,.0f} сум\n"
     text += f"✅ Төленген: -{paid_total:,.0f} сум\n"
     text += f"\n──────────────────\n"
     text += f"💰 Қолда бар: {remaining:,.0f} сум\n"
