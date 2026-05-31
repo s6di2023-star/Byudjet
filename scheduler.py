@@ -36,10 +36,10 @@ def check_credit_reminders(bot, admin_id):
         }
         cur_month = months_kk[today.month]
 
-        text = "🔔 2 күннен соң төлем!\n\n"
+        text = "🔔 2 күннен кейин төлем!\n\n"
         for name, amount, pay_day in reminders:
             text += f"• {name}: {amount:,.0f} сум\n"
-            text += f"  Төлем күни: {pay_day}-{cur_month}\n\n"
+            text += f"  Төлем күні: {pay_day}-{cur_month}\n\n"
 
         for (telegram_id,) in users:
             try:
@@ -59,7 +59,7 @@ def monthly_payment_reminder(bot, admin_id):
     conn.close()
 
     markup = telebot.types.InlineKeyboardMarkup()
-    text = "📅 Жаңа ай басталды!\nТөлемлерди растаң:\n\n"
+    text = "📅 Таза ай басланды!\nТөлемлерди раслаң:\n\n"
 
     for cid, name, amount in credits:
         text += f"💳 {name}: {amount:,.0f} сум\n"
