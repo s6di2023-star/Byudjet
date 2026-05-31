@@ -1,3 +1,14 @@
+def reset_db():
+    conn = get_conn()
+    c = conn.cursor()
+    c.execute("DROP TABLE IF EXISTS payments")
+    c.execute("DROP TABLE IF EXISTS other_expenses")
+    c.execute("DROP TABLE IF EXISTS fixed_expenses")
+    c.execute("DROP TABLE IF EXISTS credits")
+    c.execute("DROP TABLE IF EXISTS budget")
+    c.execute("DROP TABLE IF EXISTS users")
+    conn.commit()
+    conn.close()
 import psycopg2
 import os
 
