@@ -15,6 +15,9 @@ import os
 def get_conn():
     return psycopg2.connect(os.getenv("DATABASE_URL"))
 
+from database import reset_db
+reset_db()
+
 def init_db():
     conn = get_conn()
     c = conn.cursor()
