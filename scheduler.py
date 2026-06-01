@@ -1,26 +1,34 @@
 import telebot
 from apscheduler.schedulers.background import BackgroundScheduler
+from pytz import timezone
 from database import get_conn
 from datetime import datetime, timedelta
 
+UZ_TZ = timezone("Asia/Tashkent")
+
 def start_scheduler(bot, admin_id):
-    scheduler = BackgroundScheduler()
+    scheduler = BackgroundScheduler(timezone=UZ_TZ)
     scheduler.add_job(check_credit_reminders, 'cron', hour=9, minute=0,
                       args=[bot, admin_id])
     scheduler.add_job(monthly_payment_reminder, 'cron', day=1, hour=9, minute=0,
                       args=[bot, admin_id])
     scheduler.start()
+    print("✅ Scheduler иске қосылды! (Asia/Tashkent)")
 
 def check_credit_reminders(bot, admin_id):
+    print(f"🔍 Кредит тексерилип атыр... {datetime.now(UZ_TZ)}")
     conn = get_conn()
     c = conn.cursor()
     c.execute("SELECT name, amount, pay_day FROM credits WHERE is_active=1")
     credits = c.fetchall()
     conn.close()
 
-    today = datetime.now()
+    today = datetime.now(UZ_TZ)
     remind_date = (today + timedelta(days=2)).day
     reminders = [(n, a, p) for n, a, p in credits if p == remind_date]
+
+    print(f"📅 Бүгин: {today.day}, 2 күннен кейин: {remind_date}")
+    print(f"📋 Ескертиулер: {reminders}")
 
     if reminders:
         conn = get_conn()
@@ -44,10 +52,12 @@ def check_credit_reminders(bot, admin_id):
         for (telegram_id,) in users:
             try:
                 bot.send_message(telegram_id, text)
-            except:
-                pass
+                print(f"✅ Хабар жиберилди: {telegram_id}")
+            except Exception as e:
+                print(f"❌ Қате: {e}")
 
 def monthly_payment_reminder(bot, admin_id):
+    print(f"📅 Ай басы ескертиу... {datetime.now(UZ_TZ)}")
     conn = get_conn()
     c = conn.cursor()
     c.execute("SELECT id, name, amount FROM credits WHERE is_active=1")
@@ -78,5 +88,6 @@ def monthly_payment_reminder(bot, admin_id):
     for (telegram_id,) in users:
         try:
             bot.send_message(telegram_id, text, reply_markup=markup)
-        except:
-            pass
+            print(f"✅ Ай басы хабары жиберилди: {telegram_id}")
+        except Exception as e:
+            print(f"❌ Қате: {e}")
