@@ -51,16 +51,18 @@ def dashboard(message):
     conn = get_conn()
     c = conn.cursor()
 
-    c.execute("SELECT COALESCE(SUM(amount),0) FROM budget")
-    total_budget = c.fetchone()[0]
+    month = datetime.now().strftime("%Y-%m")
+
+    # Осы айдың бюджеті
+    c.execute("SELECT COALESCE(SUM(amount),0) FROM budget WHERE created_at LIKE %s",
+              (f"{month}%",))
+    month_budget = c.fetchone()[0]
 
     c.execute("SELECT name, amount, pay_day FROM credits WHERE is_active=1")
     credits = c.fetchall()
 
     c.execute("SELECT name, amount, pay_day FROM fixed_expenses WHERE is_active=1")
     fixed = c.fetchall()
-
-    month = datetime.now().strftime("%Y-%m")
 
     c.execute("SELECT COALESCE(SUM(amount),0) FROM other_expenses WHERE created_at LIKE %s",
               (f"{month}%",))
@@ -74,12 +76,24 @@ def dashboard(message):
               (month,))
     paid_total = c.fetchone()[0]
 
+    # Төленген кредиттер ref_id лары
+    c.execute("SELECT ref_id FROM payments WHERE month=%s AND status='paid' AND type='credit'",
+              (month,))
+    paid_credit_ids = [row[0] for row in c.fetchall()]
+
+    # Төленген тұрақлы харажатлар ref_id лары
+    c.execute("SELECT ref_id FROM payments WHERE month=%s AND status='paid' AND type='fixed'",
+              (month,))
+    paid_fixed_ids = [row[0] for row in c.fetchall()]
+
     conn.close()
 
     credit_total = sum(a for _, a, _ in credits)
     fixed_total = sum(a for _, a, _ in fixed)
     planned_total = credit_total + fixed_total
-    remaining = total_budget - paid_total - other
+
+    # Қолда бар = осы айдың бюджеті - төленгендер - басқа харажатлар
+    remaining = month_budget - paid_total - other
 
     months_kk = {
         1: "январь", 2: "февраль", 3: "март", 4: "апрель",
@@ -95,29 +109,50 @@ def dashboard(message):
             next_month = today.month + 1 if today.month < 12 else 1
             return months_kk[next_month]
 
-    text = f"💼 Қолда бар бюджет: {total_budget:,.0f} сум\n\n"
+    text = f"💼 Қолда бар бюджет: {month_budget:,.0f} сум\n\n"
 
     text += "🔴 Кредитлер:\n"
-    for name, amount, pay_day in credits:
-        text += f"  • {name}: {amount:,.0f} сум ({pay_day}-{get_payment_month(pay_day)})\n"
+    for cid_row in credits:
+        name, amount, pay_day = cid_row
+        # id ни алыў ушын қайтадан сураймыз
+        conn2 = get_conn()
+        c2 = conn2.cursor()
+        c2.execute("SELECT id FROM credits WHERE name=%s AND is_active=1", (name,))
+        cid = c2.fetchone()[0]
+        conn2.close()
+
+        if cid in paid_credit_ids:
+            text += f"  • ~~{name}~~: {amount:,.0f} сум ✅\n"
+        else:
+            text += f"  • {name}: {amount:,.0f} сум ({pay_day}-{get_payment_month(pay_day)})\n"
 
     text += "\n🟡 Тұрақлы харажатлар:\n"
-    for name, amount, pay_day in fixed:
-        text += f"  • {name}: {amount:,.0f} сум ({pay_day}-{get_payment_month(pay_day)})\n"
+    for fid_row in fixed:
+        name, amount, pay_day = fid_row
+        conn2 = get_conn()
+        c2 = conn2.cursor()
+        c2.execute("SELECT id FROM fixed_expenses WHERE name=%s AND is_active=1", (name,))
+        fid = c2.fetchone()[0]
+        conn2.close()
+
+        if fid in paid_fixed_ids:
+            text += f"  • ~~{name}~~: {amount:,.0f} сум ✅\n"
+        else:
+            text += f"  • {name}: {amount:,.0f} сум ({pay_day}-{get_payment_month(pay_day)})\n"
 
     if other_by_cat:
         text += "\n🟢 Басқа харажатлар:\n"
         for cat, amt in other_by_cat:
             text += f"  • {cat}: {amt:,.0f} сум\n"
 
-    text += f"\n📊 Улыумаласған: -{planned_total:,.0f} сум\n"
+    text += f"\n📊 Ойласылғанған: -{planned_total:,.0f} сум\n"
     text += f"✅ Төленген: -{paid_total:,.0f} сум\n"
     text += f"\n──────────────────\n"
     text += f"💰 Қолда бар: {remaining:,.0f} сум\n"
 
-    after_planned = total_budget - planned_total - other
+    after_planned = month_budget - planned_total - other
     if after_planned >= 0:
-        text += f"📉 Барлығы төленсе қалады: {after_planned:,.0f} сум"
+        text += f"📉 Барлығын төлесе қалады: {after_planned:,.0f} сум"
     else:
         text += f"⚠️ Барлығын төлеуге жетиспейди: {after_planned:,.0f} сум"
 
