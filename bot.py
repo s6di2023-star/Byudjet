@@ -109,8 +109,6 @@ def dashboard(message):
             next_month = today.month + 1 if today.month < 12 else 1
             return months_kk[next_month]
 
-    text = f"💼 Семьяда айланған бюджет: {month_budget:,.0f} сум\n\n"
-
     text += "🔴 Кредитлер:\n"
     for cid_row in credits:
         name, amount, pay_day = cid_row
