@@ -65,8 +65,6 @@ def register_report_handlers(bot):
         after_planned = total_budget - planned_total - other_total
 
         text = f"{title}\n\n"
-        text += f"💼 Улыума бюджет: {total_budget:,.0f} сум\n\n"
-
         text += "📥 Кириc:\n"
         if income_by_source:
             for source, amount in income_by_source:
@@ -94,6 +92,7 @@ def register_report_handlers(bot):
         text += f"✅ Төленген: -{paid_total:,.0f} сум\n"
         text += f"\n──────────────────\n"
         text += f"💰 Қолда бар: {remaining:,.0f} сум\n"
+        text += f"💼 Семьяда айланған бюджет: {month_budget:,.0f} сум\n"
 
         if after_planned >= 0:
             text += f"📉 Барлығы төленсе қалады: {after_planned:,.0f} сум"
