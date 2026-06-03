@@ -1,19 +1,26 @@
 from database import get_conn
 from datetime import datetime
 import telebot
+import os
+
+ADMIN_ID = int(os.getenv("ADMIN_ID"))
 
 def register_expense_handlers(bot):
 
     @bot.message_handler(func=lambda m: m.text == "➕ Харажат қосыў")
     def expense_type(message):
         markup = telebot.types.InlineKeyboardMarkup()
-        markup.add(telebot.types.InlineKeyboardButton("🔴 Кредит төлеми", callback_data="exp_credit"))
-        markup.add(telebot.types.InlineKeyboardButton("🟡 Тұрақлы харажат", callback_data="exp_fixed"))
+        if message.from_user.id == ADMIN_ID:
+            markup.add(telebot.types.InlineKeyboardButton("🔴 Кредит төлеми", callback_data="exp_credit"))
+            markup.add(telebot.types.InlineKeyboardButton("🟡 Тұрақлы харажат", callback_data="exp_fixed"))
         markup.add(telebot.types.InlineKeyboardButton("🟢 Басқа харажат", callback_data="exp_other"))
         bot.send_message(message.chat.id, "Харажат түрин таңла:", reply_markup=markup)
 
     @bot.callback_query_handler(func=lambda call: call.data == "exp_credit")
     def show_credits(call):
+        if call.from_user.id != ADMIN_ID:
+            bot.answer_callback_query(call.id, "❌ Бул тек админ ушын!")
+            return
         conn = get_conn()
         c = conn.cursor()
         c.execute("SELECT id, name, amount FROM credits WHERE is_active=1")
@@ -29,6 +36,9 @@ def register_expense_handlers(bot):
 
     @bot.callback_query_handler(func=lambda call: call.data == "exp_fixed")
     def show_fixed(call):
+        if call.from_user.id != ADMIN_ID:
+            bot.answer_callback_query(call.id, "❌ Бул тек админ ушын!")
+            return
         conn = get_conn()
         c = conn.cursor()
         c.execute("SELECT id, name, amount FROM fixed_expenses WHERE is_active=1")
@@ -51,7 +61,7 @@ def register_expense_handlers(bot):
         conn.close()
 
         markup = telebot.types.InlineKeyboardMarkup()
-        default_cats = ["🛒 Азық-ауқат", "🚗 Такси", "📦 Басқа"]
+        default_cats = ["🛒 Азық-аўқат", "🚗 Такси", "📦 Басқа"]
         for cat in default_cats:
             markup.add(telebot.types.InlineKeyboardButton(
                 cat, callback_data=f"ocat_{cat}"))
@@ -66,7 +76,7 @@ def register_expense_handlers(bot):
     @bot.callback_query_handler(func=lambda call: call.data == "ocat_NEW")
     def new_category(call):
         msg = bot.send_message(call.message.chat.id,
-                               "Таза категория атын жаз:\nМысалы: Кийим, Дәри, Салон")
+                               "Таза категория атын жаз:\nМысалы: Кийим, Дәри, Китап, Саяхат")
         bot.register_next_step_handler(msg, ask_new_cat_amount, call.from_user.id)
 
     def ask_new_cat_amount(message, telegram_id):
@@ -99,24 +109,38 @@ def register_expense_handlers(bot):
 
     @bot.callback_query_handler(func=lambda call: call.data.startswith("pc_"))
     def pay_credit(call):
+        if call.from_user.id != ADMIN_ID:
+            bot.answer_callback_query(call.id, "❌ Бул тек админ ушын!")
+            return
         cid = int(call.data.split("_")[1])
         conn = get_conn()
         c = conn.cursor()
         c.execute("SELECT name, amount FROM credits WHERE id=%s", (cid,))
         credit = c.fetchone()
-        c.execute("SELECT COALESCE(SUM(amount),0) FROM budget")
-        total_budget = c.fetchone()[0]
+
         month = datetime.now().strftime("%Y-%m")
-        c.execute("SELECT COALESCE(SUM(amount),0) FROM other_expenses WHERE created_at LIKE %s",
+
+        # Осы айда қосылған бюджет
+        c.execute("SELECT COALESCE(SUM(amount),0) FROM budget WHERE created_at LIKE %s",
                   (f"{month}%",))
-        other = c.fetchone()[0]
+        month_budget = c.fetchone()[0]
+
+        # Осы айда төленген
         c.execute("SELECT COALESCE(SUM(amount),0) FROM payments WHERE month=%s AND status='paid'",
                   (month,))
         paid_total = c.fetchone()[0]
+
+        # Осы айдағы басқа харажатлар
+        c.execute("SELECT COALESCE(SUM(amount),0) FROM other_expenses WHERE created_at LIKE %s",
+                  (f"{month}%",))
+        other = c.fetchone()[0]
+
         conn.close()
 
         name, amount = credit
-        remaining = total_budget - paid_total - other
+
+        # Қолда бар = осы айдың бюджеті - төленгендер - басқа харажатлар
+        remaining = month_budget - paid_total - other
 
         if remaining >= amount:
             conn = get_conn()
@@ -127,36 +151,52 @@ def register_expense_handlers(bot):
             conn.commit()
             conn.close()
             bot.answer_callback_query(call.id, f"✅ {name} төленди!")
-            bot.send_message(call.message.chat.id, f"✅ {name}: -{amount:,.0f} сум төленди!")
+            bot.send_message(call.message.chat.id,
+                             f"✅ {name}: -{amount:,.0f} сум төленди!\n"
+                             f"💰 Қалған: {remaining - amount:,.0f} сум")
         else:
             bot.answer_callback_query(call.id, "❌ Бюджет жетиспейди!")
             bot.send_message(call.message.chat.id,
                              f"⚠️ Бюджет жетиспейди!\n"
-                             f"• {name}: {amount:,.0f} сум\n"
+                             f"• {name}: {amount:,.0f} сум керек\n"
                              f"• Қолда бар: {remaining:,.0f} сум\n"
                              f"• Айырма: -{amount - remaining:,.0f} сум\n\n"
                              f"Бюджетти толтырың!")
 
     @bot.callback_query_handler(func=lambda call: call.data.startswith("pf_"))
     def pay_fixed(call):
+        if call.from_user.id != ADMIN_ID:
+            bot.answer_callback_query(call.id, "❌ Бул тек админ ушын!")
+            return
         fid = int(call.data.split("_")[1])
         conn = get_conn()
         c = conn.cursor()
         c.execute("SELECT name, amount FROM fixed_expenses WHERE id=%s", (fid,))
         fixed = c.fetchone()
-        c.execute("SELECT COALESCE(SUM(amount),0) FROM budget")
-        total_budget = c.fetchone()[0]
+
         month = datetime.now().strftime("%Y-%m")
-        c.execute("SELECT COALESCE(SUM(amount),0) FROM other_expenses WHERE created_at LIKE %s",
+
+        # Осы айда қосылған бюджет
+        c.execute("SELECT COALESCE(SUM(amount),0) FROM budget WHERE created_at LIKE %s",
                   (f"{month}%",))
-        other = c.fetchone()[0]
+        month_budget = c.fetchone()[0]
+
+        # Осы айда төленген
         c.execute("SELECT COALESCE(SUM(amount),0) FROM payments WHERE month=%s AND status='paid'",
                   (month,))
         paid_total = c.fetchone()[0]
+
+        # Осы айдағы басқа харажатлар
+        c.execute("SELECT COALESCE(SUM(amount),0) FROM other_expenses WHERE created_at LIKE %s",
+                  (f"{month}%",))
+        other = c.fetchone()[0]
+
         conn.close()
 
         name, amount = fixed
-        remaining = total_budget - paid_total - other
+
+        # Қолда бар = осы айдың бюджеті - төленгендер - басқа харажатлар
+        remaining = month_budget - paid_total - other
 
         if remaining >= amount:
             conn = get_conn()
@@ -167,12 +207,14 @@ def register_expense_handlers(bot):
             conn.commit()
             conn.close()
             bot.answer_callback_query(call.id, f"✅ {name} төленди!")
-            bot.send_message(call.message.chat.id, f"✅ {name}: -{amount:,.0f} сум төленди!")
+            bot.send_message(call.message.chat.id,
+                             f"✅ {name}: -{amount:,.0f} сум төленди!\n"
+                             f"💰 Қалған: {remaining - amount:,.0f} сум")
         else:
             bot.answer_callback_query(call.id, "❌ Бюджет жетиспейди!")
             bot.send_message(call.message.chat.id,
                              f"⚠️ Бюджет жетиспейди!\n"
-                             f"• {name}: {amount:,.0f} сум\n"
+                             f"• {name}: {amount:,.0f} сум керек\n"
                              f"• Қолда бар: {remaining:,.0f} сум\n"
                              f"• Айырма: -{amount - remaining:,.0f} сум\n\n"
                              f"Бюджетти толтырың!")
