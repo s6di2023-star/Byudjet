@@ -17,6 +17,9 @@ ADMIN_ID = int(os.getenv("ADMIN_ID"))
 bot = telebot.TeleBot(BOT_TOKEN)
 app = Flask(__name__)
 
+from database import reset_db
+reset_db()
+
 init_db()
 
 @app.route('/')
