@@ -53,15 +53,14 @@ def dashboard(message):
 
     month = datetime.now().strftime("%Y-%m")
 
-    # Осы айдың бюджеті
     c.execute("SELECT COALESCE(SUM(amount),0) FROM budget WHERE created_at LIKE %s",
               (f"{month}%",))
     month_budget = c.fetchone()[0]
 
-    c.execute("SELECT name, amount, pay_day FROM credits WHERE is_active=1")
+    c.execute("SELECT id, name, amount, pay_day FROM credits WHERE is_active=1")
     credits = c.fetchall()
 
-    c.execute("SELECT name, amount, pay_day FROM fixed_expenses WHERE is_active=1")
+    c.execute("SELECT id, name, amount, pay_day FROM fixed_expenses WHERE is_active=1")
     fixed = c.fetchall()
 
     c.execute("SELECT COALESCE(SUM(amount),0) FROM other_expenses WHERE created_at LIKE %s",
@@ -76,23 +75,19 @@ def dashboard(message):
               (month,))
     paid_total = c.fetchone()[0]
 
-    # Төленген кредиттер ref_id лары
     c.execute("SELECT ref_id FROM payments WHERE month=%s AND status='paid' AND type='credit'",
               (month,))
     paid_credit_ids = [row[0] for row in c.fetchall()]
 
-    # Төленген тұрақлы харажатлар ref_id лары
     c.execute("SELECT ref_id FROM payments WHERE month=%s AND status='paid' AND type='fixed'",
               (month,))
     paid_fixed_ids = [row[0] for row in c.fetchall()]
 
     conn.close()
 
-    credit_total = sum(a for _, a, _ in credits)
-    fixed_total = sum(a for _, a, _ in fixed)
+    credit_total = sum(a for _, a, _ , _ in credits)
+    fixed_total = sum(a for _, a, _, _ in fixed)
     planned_total = credit_total + fixed_total
-
-    # Қолда бар = осы айдың бюджеті - төленгендер - басқа харажатлар
     remaining = month_budget - paid_total - other
 
     months_kk = {
@@ -109,32 +104,17 @@ def dashboard(message):
             next_month = today.month + 1 if today.month < 12 else 1
             return months_kk[next_month]
 
-    text += "🔴 Кредитлер:\n"
-    for cid_row in credits:
-        name, amount, pay_day = cid_row
-        # id ни алыў ушын қайтадан сураймыз
-        conn2 = get_conn()
-        c2 = conn2.cursor()
-        c2.execute("SELECT id FROM credits WHERE name=%s AND is_active=1", (name,))
-        cid = c2.fetchone()[0]
-        conn2.close()
-
+    text = "🔴 Кредитлер:\n"
+    for cid, name, amount, pay_day in credits:
         if cid in paid_credit_ids:
-            text += f"  • ~~{name}~~: {amount:,.0f} сум ✅\n"
+            text += f"  • {name}: {amount:,.0f} сум ✅\n"
         else:
             text += f"  • {name}: {amount:,.0f} сум ({pay_day}-{get_payment_month(pay_day)})\n"
 
     text += "\n🟡 Тұрақлы харажатлар:\n"
-    for fid_row in fixed:
-        name, amount, pay_day = fid_row
-        conn2 = get_conn()
-        c2 = conn2.cursor()
-        c2.execute("SELECT id FROM fixed_expenses WHERE name=%s AND is_active=1", (name,))
-        fid = c2.fetchone()[0]
-        conn2.close()
-
+    for fid, name, amount, pay_day in fixed:
         if fid in paid_fixed_ids:
-            text += f"  • ~~{name}~~: {amount:,.0f} сум ✅\n"
+            text += f"  • {name}: {amount:,.0f} сум ✅\n"
         else:
             text += f"  • {name}: {amount:,.0f} сум ({pay_day}-{get_payment_month(pay_day)})\n"
 
@@ -147,16 +127,16 @@ def dashboard(message):
     text += f"✅ Төленген: -{paid_total:,.0f} сум\n"
     text += f"\n──────────────────\n"
     text += f"💰 Қолда бар: {remaining:,.0f} сум\n"
-    text += f"💼 Семьяда айланған бюджет: {month_budget:,.0f} сум\n"
 
     after_planned = month_budget - planned_total - other
     if after_planned >= 0:
-        text += f"📉 Барлығын төлесе қалады: {after_planned:,.0f} сум"
+        text += f"📉 Барлығын төлесе қалады: {after_planned:,.0f} сум\n"
     else:
-        text += f"⚠️ Барлығын төлеуге жетиспейди: {after_planned:,.0f} сум"
+        text += f"⚠️ Барлығын төлеуге жетиспейди: {after_planned:,.0f} сум\n"
+
+    text += f"\n💼 Семьяда айланған бюджет: {month_budget:,.0f} сум"
 
     bot.send_message(message.chat.id, text, reply_markup=main_menu())
-
 @bot.message_handler(func=lambda m: m.text == "⚙️ Өзгертиў")
 def settings(message):
     if message.from_user.id != ADMIN_ID:
