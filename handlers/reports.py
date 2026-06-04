@@ -35,7 +35,7 @@ def register_report_handlers(bot):
 
         c.execute("SELECT COALESCE(SUM(amount),0) FROM budget WHERE created_at LIKE %s",
                   (f"{date_filter}%",))
-        total_budget = c.fetchone()[0]
+        total_budget = float(c.fetchone()[0])
 
         c.execute("SELECT source, COALESCE(SUM(amount),0) FROM budget WHERE created_at LIKE %s GROUP BY source",
                   (f"{date_filter}%",))
@@ -43,21 +43,21 @@ def register_report_handlers(bot):
 
         c.execute("SELECT name, amount FROM credits WHERE is_active=1")
         credits = c.fetchall()
-        credit_total = sum(a for _, a in credits)
+        credit_total = sum(float(a) for _, a in credits)
 
         c.execute("SELECT name, amount FROM fixed_expenses WHERE is_active=1")
         fixed = c.fetchall()
-        fixed_total = sum(a for _, a in fixed)
+        fixed_total = sum(float(a) for _, a in fixed)
 
         c.execute("SELECT category, COALESCE(SUM(amount),0) FROM other_expenses WHERE created_at LIKE %s GROUP BY category",
                   (f"{date_filter}%",))
         other_by_cat = c.fetchall()
-        other_total = sum(a for _, a in other_by_cat)
+        other_total = sum(float(a) for _, a in other_by_cat)
 
         month = date_filter if len(date_filter) == 7 else now.strftime("%Y-%m")
         c.execute("SELECT COALESCE(SUM(amount),0) FROM payments WHERE month=%s AND status='paid'",
                   (month,))
-        paid_total = c.fetchone()[0]
+        paid_total = float(c.fetchone()[0])
         conn.close()
 
         planned_total = credit_total + fixed_total
@@ -65,38 +65,40 @@ def register_report_handlers(bot):
         after_planned = total_budget - planned_total - other_total
 
         text = f"{title}\n\n"
+
         text += "📥 Кириc:\n"
         if income_by_source:
             for source, amount in income_by_source:
-                text += f"  • {source}: +{amount:,.0f} сум\n"
+                text += f"  • {source}: +{float(amount):,.0f} сум\n"
         else:
             text += "  • Жоқ\n"
 
         text += "\n🔴 Кредитлер:\n"
         for name, amount in credits:
-            text += f"  • {name}: {amount:,.0f} сум\n"
+            text += f"  • {name}: {float(amount):,.0f} сум\n"
         text += f"  Улыума: -{credit_total:,.0f} сум\n"
 
         text += "\n🟡 Тұрақлы харажатлар:\n"
         for name, amount in fixed:
-            text += f"  • {name}: {amount:,.0f} сум\n"
+            text += f"  • {name}: {float(amount):,.0f} сум\n"
         text += f"  Улыума: -{fixed_total:,.0f} сум\n"
 
         if other_by_cat:
             text += "\n🟢 Басқа харажатлар:\n"
             for cat, amt in other_by_cat:
-                text += f"  • {cat}: -{amt:,.0f} сум\n"
-            text += f"  Улыума: -{other_total:,.0f} сум\n"
+                text += f"  • {cat}: -{float(amt):,.0f} сум\n"
+            text += f"  Жалпы: -{other_total:,.0f} сум\n"
 
-        text += f"\n📊 Улыумаласған: -{planned_total:,.0f} сум\n"
+        text += f"\n📊 Ойласылғанған: -{planned_total:,.0f} сум\n"
         text += f"✅ Төленген: -{paid_total:,.0f} сум\n"
         text += f"\n──────────────────\n"
         text += f"💰 Қолда бар: {remaining:,.0f} сум\n"
-        text += f"💼 Семьяда айланған бюджет: {month_budget:,.0f} сум\n"
 
         if after_planned >= 0:
-            text += f"📉 Барлығы төленсе қалады: {after_planned:,.0f} сум"
+            text += f"📉 Барлығын төлесе қалады: {after_planned:,.0f} сум\n"
         else:
-            text += f"⚠️ Барлығын төлеуге жетиспейди: {after_planned:,.0f} сум"
+            text += f"⚠️ Барлығын төлеуге жетиспейди: {after_planned:,.0f} сум\n"
+
+        text += f"\n💼 Семьяда айланған бюджет: {total_budget:,.0f} сум"
 
         bot.send_message(call.message.chat.id, text)
