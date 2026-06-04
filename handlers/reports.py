@@ -3,6 +3,12 @@ from datetime import datetime
 import calendar
 import telebot
 
+MONTHS_RU = {
+    1: "Январь", 2: "Февраль", 3: "Март", 4: "Апрель",
+    5: "Май", 6: "Июнь", 7: "Июль", 8: "Август",
+    9: "Сентябрь", 10: "Октябрь", 11: "Ноябрь", 12: "Декабрь"
+}
+
 def register_report_handlers(bot):
 
     @bot.message_handler(func=lambda m: m.text == "📊 Есап")
@@ -24,14 +30,14 @@ def register_report_handlers(bot):
             title = f"📊 Бүгинги есап ({date_filter})"
         elif call.data == "rep_month":
             date_filter = now.strftime("%Y-%m")
-            title = f"📊 {now.strftime('%B %Y')} есабы"
+            title = f"📊 {MONTHS_RU[now.month]} {now.year} есабы"
         else:
             last_month = now.month - 1 if now.month > 1 else 12
             last_year = now.year if now.month > 1 else now.year - 1
             last_day = min(now.day, calendar.monthrange(last_year, last_month)[1])
             last = now.replace(year=last_year, month=last_month, day=last_day)
             date_filter = last.strftime("%Y-%m")
-            title = f"📊 {last.strftime('%B %Y')} есабы"
+            title = f"📊 {MONTHS_RU[last_month]} {last_year} есабы"
 
         c.execute("SELECT COALESCE(SUM(amount),0) FROM budget WHERE created_at LIKE %s",
                   (f"{date_filter}%",))
@@ -87,7 +93,7 @@ def register_report_handlers(bot):
             text += "\n🟢 Басқа харажатлар:\n"
             for cat, amt in other_by_cat:
                 text += f"  • {cat}: -{float(amt):,.0f} сум\n"
-            text += f"  Жалпы: -{other_total:,.0f} сум\n"
+            text += f"  Улыума: -{other_total:,.0f} сум\n"
 
         text += f"\n📊 Ойласылғанған: -{planned_total:,.0f} сум\n"
         text += f"✅ Төленген: -{paid_total:,.0f} сум\n"
