@@ -21,7 +21,7 @@ init_db()
 
 @app.route('/')
 def home():
-    return "Бот жумыс ислеп тур! ✅"
+    return "Бот жумыс истеп тур! ✅"
 
 def main_menu():
     markup = telebot.types.ReplyKeyboardMarkup(resize_keyboard=True)
@@ -53,40 +53,47 @@ def dashboard(message):
 
     month = datetime.now().strftime("%Y-%m")
 
+    # Осы айдың бюджеті
     c.execute("SELECT COALESCE(SUM(amount),0) FROM budget WHERE created_at LIKE %s",
               (f"{month}%",))
-    month_budget = c.fetchone()[0]
+    month_budget = float(c.fetchone()[0])
 
+    # Кредитлер — id менен
     c.execute("SELECT id, name, amount, pay_day FROM credits WHERE is_active=1")
     credits = c.fetchall()
 
+    # Тұрақлы харажатлар — id менен
     c.execute("SELECT id, name, amount, pay_day FROM fixed_expenses WHERE is_active=1")
     fixed = c.fetchall()
 
+    # Басқа харажатлар
     c.execute("SELECT COALESCE(SUM(amount),0) FROM other_expenses WHERE created_at LIKE %s",
               (f"{month}%",))
-    other = c.fetchone()[0]
+    other = float(c.fetchone()[0])
 
     c.execute("SELECT category, COALESCE(SUM(amount),0) FROM other_expenses WHERE created_at LIKE %s GROUP BY category",
               (f"{month}%",))
     other_by_cat = c.fetchall()
 
+    # Төленген жалпы
     c.execute("SELECT COALESCE(SUM(amount),0) FROM payments WHERE month=%s AND status='paid'",
               (month,))
-    paid_total = c.fetchone()[0]
+    paid_total = float(c.fetchone()[0])
 
+    # Төленген кредиттер
     c.execute("SELECT ref_id FROM payments WHERE month=%s AND status='paid' AND type='credit'",
               (month,))
     paid_credit_ids = [row[0] for row in c.fetchall()]
 
+    # Төленген тұрақлы
     c.execute("SELECT ref_id FROM payments WHERE month=%s AND status='paid' AND type='fixed'",
               (month,))
     paid_fixed_ids = [row[0] for row in c.fetchall()]
 
     conn.close()
 
-    credit_total = sum(a for _, a, _ , _ in credits)
-    fixed_total = sum(a for _, a, _, _ in fixed)
+    credit_total = sum(float(a) for _, _, a, _ in credits)
+    fixed_total = sum(float(a) for _, _, a, _ in fixed)
     planned_total = credit_total + fixed_total
     remaining = month_budget - paid_total - other
 
@@ -106,6 +113,7 @@ def dashboard(message):
 
     text = "🔴 Кредитлер:\n"
     for cid, name, amount, pay_day in credits:
+        amount = float(amount)
         if cid in paid_credit_ids:
             text += f"  • {name}: {amount:,.0f} сум ✅\n"
         else:
@@ -113,6 +121,7 @@ def dashboard(message):
 
     text += "\n🟡 Тұрақлы харажатлар:\n"
     for fid, name, amount, pay_day in fixed:
+        amount = float(amount)
         if fid in paid_fixed_ids:
             text += f"  • {name}: {amount:,.0f} сум ✅\n"
         else:
@@ -121,7 +130,7 @@ def dashboard(message):
     if other_by_cat:
         text += "\n🟢 Басқа харажатлар:\n"
         for cat, amt in other_by_cat:
-            text += f"  • {cat}: {amt:,.0f} сум\n"
+            text += f"  • {cat}: {float(amt):,.0f} сум\n"
 
     text += f"\n📊 Ойласылғанған: -{planned_total:,.0f} сум\n"
     text += f"✅ Төленген: -{paid_total:,.0f} сум\n"
@@ -137,6 +146,7 @@ def dashboard(message):
     text += f"\n💼 Семьяда айланған бюджет: {month_budget:,.0f} сум"
 
     bot.send_message(message.chat.id, text, reply_markup=main_menu())
+
 @bot.message_handler(func=lambda m: m.text == "⚙️ Өзгертиў")
 def settings(message):
     if message.from_user.id != ADMIN_ID:
@@ -157,7 +167,7 @@ def set_credit_menu(call):
     markup = telebot.types.InlineKeyboardMarkup()
     for cid, name, amount, pay_day in credits:
         markup.add(telebot.types.InlineKeyboardButton(
-            f"{name}: {amount:,.0f} сум ({pay_day}-күн)",
+            f"{name}: {float(amount):,.0f} сум ({pay_day}-күн)",
             callback_data=f"ec_{cid}"
         ))
     bot.send_message(call.message.chat.id, "Қайси кредитти өзгертесиз?", reply_markup=markup)
@@ -165,7 +175,7 @@ def set_credit_menu(call):
 @bot.callback_query_handler(func=lambda call: call.data.startswith("ec_"))
 def edit_credit(call):
     cid = int(call.data.split("_")[1])
-    msg = bot.send_message(call.message.chat.id, "Жаңа сумма жаз (сум):\nМысалы: 450000")
+    msg = bot.send_message(call.message.chat.id, "Таза сумма жаз (сум):\nМысалы: 450000")
     bot.register_next_step_handler(msg, save_credit_amount, cid)
 
 def save_credit_amount(message, cid):
@@ -204,7 +214,7 @@ def set_fixed_menu(call):
     markup = telebot.types.InlineKeyboardMarkup()
     for fid, name, amount, pay_day in fixed:
         markup.add(telebot.types.InlineKeyboardButton(
-            f"{name}: {amount:,.0f} сум ({pay_day}-күн)",
+            f"{name}: {float(amount):,.0f} сум ({pay_day}-күн)",
             callback_data=f"ef_{fid}"
         ))
     bot.send_message(call.message.chat.id, "Қайси харажатты өзгертесиз?", reply_markup=markup)
@@ -247,7 +257,8 @@ register_report_handlers(bot)
 start_scheduler(bot, ADMIN_ID)
 
 def run_bot():
-    bot.polling(none_stop=True)
+    bot.delete_webhook()
+    bot.polling(none_stop=True, timeout=60, long_polling_timeout=60)
 
 if __name__ == "__main__":
     threading.Thread(target=run_bot).start()
