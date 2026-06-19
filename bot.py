@@ -19,9 +19,16 @@ app = Flask(__name__)
 
 init_db()
 
+# Коммунал төлемді өшіру — бір рет іске қосылады
+conn_temp = get_conn()
+c_temp = conn_temp.cursor()
+c_temp.execute("UPDATE fixed_expenses SET is_active=0 WHERE name='Коммунал төлем'")
+conn_temp.commit()
+conn_temp.close()
+
 @app.route('/')
 def home():
-    return "Бот жумыс истеп тур! ✅"
+    return "Бот жумыс ислеп тур! ✅"
 
 def main_menu():
     markup = telebot.types.ReplyKeyboardMarkup(resize_keyboard=True)
@@ -53,20 +60,16 @@ def dashboard(message):
 
     month = datetime.now().strftime("%Y-%m")
 
-    # Осы айдың бюджеті
     c.execute("SELECT COALESCE(SUM(amount),0) FROM budget WHERE created_at LIKE %s",
               (f"{month}%",))
     month_budget = float(c.fetchone()[0])
 
-    # Кредитлер — id менен
     c.execute("SELECT id, name, amount, pay_day FROM credits WHERE is_active=1")
     credits = c.fetchall()
 
-    # Тұрақлы харажатлар — id менен
     c.execute("SELECT id, name, amount, pay_day FROM fixed_expenses WHERE is_active=1")
     fixed = c.fetchall()
 
-    # Басқа харажатлар
     c.execute("SELECT COALESCE(SUM(amount),0) FROM other_expenses WHERE created_at LIKE %s",
               (f"{month}%",))
     other = float(c.fetchone()[0])
@@ -75,17 +78,14 @@ def dashboard(message):
               (f"{month}%",))
     other_by_cat = c.fetchall()
 
-    # Төленген жалпы
     c.execute("SELECT COALESCE(SUM(amount),0) FROM payments WHERE month=%s AND status='paid'",
               (month,))
     paid_total = float(c.fetchone()[0])
 
-    # Төленген кредиттер
     c.execute("SELECT ref_id FROM payments WHERE month=%s AND status='paid' AND type='credit'",
               (month,))
     paid_credit_ids = [row[0] for row in c.fetchall()]
 
-    # Төленген тұрақлы
     c.execute("SELECT ref_id FROM payments WHERE month=%s AND status='paid' AND type='fixed'",
               (month,))
     paid_fixed_ids = [row[0] for row in c.fetchall()]
@@ -132,7 +132,7 @@ def dashboard(message):
         for cat, amt in other_by_cat:
             text += f"  • {cat}: {float(amt):,.0f} сум\n"
 
-    text += f"\n📊 Ойласылғанған: -{planned_total:,.0f} сум\n"
+    text += f"\n📊 Ойласылған: -{planned_total:,.0f} сум\n"
     text += f"✅ Төленген: -{paid_total:,.0f} сум\n"
     text += f"\n──────────────────\n"
     text += f"💰 Қолда бар: {remaining:,.0f} сум\n"
@@ -198,7 +198,7 @@ def save_credit_day(message, cid, amount):
         conn.commit()
         conn.close()
         bot.send_message(message.chat.id,
-                         f"✅ Жаңартылды!\n"
+                         f"✅ Тазаланды!\n"
                          f"• Сумма: {amount:,.0f} сум\n"
                          f"• Төлем күни: {day}-күн")
     except ValueError:
@@ -245,7 +245,7 @@ def save_fixed_day(message, fid, amount):
         conn.commit()
         conn.close()
         bot.send_message(message.chat.id,
-                         f"✅ Жаңартылды!\n"
+                         f"✅ Тазаланды!\n"
                          f"• Сумма: {amount:,.0f} сум\n"
                          f"• Төлем күни: {day}-күн")
     except ValueError:
