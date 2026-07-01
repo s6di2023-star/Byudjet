@@ -82,7 +82,6 @@ def init_db():
     if c.fetchone()[0] == 0:
         c.executemany("INSERT INTO fixed_expenses (name, amount, pay_day) VALUES (%s,%s,%s)", [
             ("Квартира", 0, 1),
-            ("Коммунал төлем", 0, 1),
             ("Бала таярлығы", 0, 1),
         ])
 
