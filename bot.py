@@ -19,6 +19,12 @@ app = Flask(__name__)
 
 init_db()
 
+conn_temp = get_conn()
+c_temp = conn_temp.cursor()
+c_temp.execute("UPDATE fixed_expenses SET is_active=0 WHERE name='Коммунал төлем'")
+conn_temp.commit()
+conn_temp.close()
+
 @app.route('/')
 def home():
     return "Бот жумыс истеп тур! ✅"
