@@ -21,7 +21,7 @@ init_db()
 
 @app.route('/')
 def home():
-    return "Бот жумыс ислеп тур! ✅"
+    return "Бот жумыс истеп тур! ✅"
 
 def main_menu():
     markup = telebot.types.ReplyKeyboardMarkup(resize_keyboard=True)
@@ -174,7 +174,7 @@ def edit_credit(call):
 def save_credit_amount(message, cid):
     try:
         amount = float(message.text.replace(",", "").replace(" ", ""))
-        msg = bot.send_message(message.chat.id, "Төлем күнин жаз (1-31):\nМысалы: 15")
+        msg = bot.send_message(message.chat.id, "Төлем число күнин жаз (1-31):\nМысалы: 15")
         bot.register_next_step_handler(msg, save_credit_day, cid, amount)
     except ValueError:
         bot.send_message(message.chat.id, "❌ Қате! Тек сан жазың.")
@@ -193,7 +193,7 @@ def save_credit_day(message, cid, amount):
         bot.send_message(message.chat.id,
                          f"✅ Тазаланды!\n"
                          f"• Сумма: {amount:,.0f} сум\n"
-                         f"• Төлем күни: {day}-күн")
+                         f"• Төлем число күни: {day}-күн")
     except ValueError:
         bot.send_message(message.chat.id, "❌ Қате! 1-31 арасында жазың.")
 
@@ -221,7 +221,7 @@ def edit_fixed(call):
 def save_fixed_amount(message, fid):
     try:
         amount = float(message.text.replace(",", "").replace(" ", ""))
-        msg = bot.send_message(message.chat.id, "Төлем күнин жаз (1-31):\nМысалы: 5")
+        msg = bot.send_message(message.chat.id, "Төлем число күнин жаз (1-31):\nМысалы: 5")
         bot.register_next_step_handler(msg, save_fixed_day, fid, amount)
     except ValueError:
         bot.send_message(message.chat.id, "❌ Қате! Тек сан жазың.")
