@@ -8,6 +8,7 @@ def register_budget_handlers(bot):
     def budget_source(message):
         markup = telebot.types.InlineKeyboardMarkup()
         markup.add(telebot.types.InlineKeyboardButton("💵 Айлық", callback_data="bdg_aylik"))
+        markup.add(telebot.types.InlineKeyboardButton("☀️ Солнечный панель", callback_data="bdg_solar"))
         markup.add(telebot.types.InlineKeyboardButton("🤝 Жәрдем пул", callback_data="bdg_jardem"))
         markup.add(telebot.types.InlineKeyboardButton("📥 Басқа", callback_data="bdg_baska"))
         bot.send_message(message.chat.id, "Бюджет дерегин таңла:", reply_markup=markup)
@@ -16,6 +17,7 @@ def register_budget_handlers(bot):
     def budget_amount(call):
         sources = {
             "bdg_aylik": "Айлық",
+            "bdg_solar": "Солнечный панель",
             "bdg_jardem": "Жәрдем пул",
             "bdg_baska": "Басқа"
         }
