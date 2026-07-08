@@ -19,15 +19,9 @@ app = Flask(__name__)
 
 init_db()
 
-conn_temp = get_conn()
-c_temp = conn_temp.cursor()
-c_temp.execute("UPDATE fixed_expenses SET is_active=0 WHERE name='Коммунал төлем'")
-conn_temp.commit()
-conn_temp.close()
-
 @app.route('/')
 def home():
-    return "Бот жумыс истеп тур! ✅"
+    return "Бот жумыс ислеп тур! ✅"
 
 def main_menu():
     markup = telebot.types.ReplyKeyboardMarkup(resize_keyboard=True)
@@ -256,7 +250,7 @@ register_report_handlers(bot)
 start_scheduler(bot, ADMIN_ID)
 
 def run_bot():
-    bot.delete_webhook()
+    bot.delete_webhook(drop_pending_updates=True)
     bot.polling(none_stop=True, timeout=60, long_polling_timeout=60)
 
 if __name__ == "__main__":
