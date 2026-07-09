@@ -250,8 +250,14 @@ register_report_handlers(bot)
 start_scheduler(bot, ADMIN_ID)
 
 def run_bot():
-    bot.delete_webhook(drop_pending_updates=True)
-    bot.polling(none_stop=True, timeout=60, long_polling_timeout=60)
+    import time
+    while True:
+        try:
+            bot.delete_webhook(drop_pending_updates=True)
+            bot.polling(none_stop=False, timeout=60, long_polling_timeout=60)
+        except Exception as e:
+            print(f"❌ Polling қате: {e}")
+            time.sleep(5)
 
 if __name__ == "__main__":
     threading.Thread(target=run_bot).start()
