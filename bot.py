@@ -1,7 +1,7 @@
 import telebot
 import os
 import threading
-from flask import Flask
+from flask import Flask, request
 from dotenv import load_dotenv
 from datetime import datetime
 from database import init_db, get_conn
@@ -13,6 +13,7 @@ from handlers.reports import register_report_handlers
 load_dotenv()
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 ADMIN_ID = int(os.getenv("ADMIN_ID"))
+WEBHOOK_URL = os.getenv("WEBHOOK_URL", "https://byudjet.onrender.com")
 
 bot = telebot.TeleBot(BOT_TOKEN)
 app = Flask(__name__)
@@ -22,6 +23,13 @@ init_db()
 @app.route('/')
 def home():
     return "Бот жумыс ислеп тур! ✅"
+
+@app.route(f'/{BOT_TOKEN}', methods=['POST'])
+def webhook():
+    json_str = request.get_data().decode('UTF-8')
+    update = telebot.types.Update.de_json(json_str)
+    bot.process_new_updates([update])
+    return 'OK', 200
 
 def main_menu():
     markup = telebot.types.ReplyKeyboardMarkup(resize_keyboard=True)
@@ -249,12 +257,8 @@ register_expense_handlers(bot)
 register_report_handlers(bot)
 start_scheduler(bot, ADMIN_ID)
 
-def run_bot():
-    import time
-    time.sleep(3)
-    bot.delete_webhook(drop_pending_updates=True)
-    bot.polling(none_stop=True, timeout=60, long_polling_timeout=60)
-
 if __name__ == "__main__":
-    threading.Thread(target=run_bot).start()
+    bot.remove_webhook()
+    bot.set_webhook(url=f"{WEBHOOK_URL}/{BOT_TOKEN}")
+    print(f"✅ Webhook орнатылды: {WEBHOOK_URL}/{BOT_TOKEN}")
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
