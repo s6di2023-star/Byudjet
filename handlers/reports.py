@@ -95,7 +95,7 @@ def register_report_handlers(bot):
                 text += f"  • {cat}: -{float(amt):,.0f} сум\n"
             text += f"  Улыума: -{other_total:,.0f} сум\n"
 
-        text += f"\n📊 Ойласылғанған: -{planned_total:,.0f} сум\n"
+        text += f"\n📊 Ойласылған: -{planned_total:,.0f} сум\n"
         text += f"✅ Төленген: -{paid_total:,.0f} сум\n"
         text += f"\n──────────────────\n"
         text += f"💰 Қолда бар: {remaining:,.0f} сум\n"
