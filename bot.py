@@ -19,7 +19,9 @@ bot = telebot.TeleBot(BOT_TOKEN)
 app = Flask(__name__)
 
 init_db()
-
+# Тест — deploy болғаннан соң өшіріңіз
+from scheduler import morning_summary
+threading.Thread(target=morning_summary, args=[bot]).start()
 @app.route('/')
 def home():
     return "Бот жумыс ислеп тур! ✅"
